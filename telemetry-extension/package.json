@@ -1,0 +1,65 @@
+{
+  "name": "developer-intelligence",
+  "displayName": "DevHouse Telemetry",
+  "description": "Smart Git Commit Tracking for Supabase",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devintel.sendTestPing",
+        "title": "DevIntel: Show Current Session Telemetry"
+      }
+    ],
+    "configuration": {
+      "title": "Developer Intelligence Telemetry",
+      "properties": {
+        "devintel.supabaseUrl": {
+            "type": "string",
+            "default": "https://sgszqmuqwjghogtfuhbq.supabase.co",
+            "description": "Supabase Project URL"
+        },
+        "devintel.supabaseKey": {
+            "type": "string",
+            "default": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnc3pxbXVxd2pnaG9ndGZ1aGJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MjE3MDIsImV4cCI6MjA4OTQ5NzcwMn0.kZbXvIIRnMq6gdWrowF9MKOkEgFCHlkuNaf6kT-QaSM",
+            "description": "Supabase Anon/Public Key"
+        },
+        "devintel.developerId": {
+          "type": "string",
+          "default": "dev_22",
+          "description": "The unique ID of the developer."
+        },
+        "devintel.repositoryName": {
+          "type": "string",
+          "default": "payment-service",
+          "description": "Name of the current repository."
+        },
+        "devintel.telemetryEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable sending telemetry events."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.1.3"
+  }
+}
