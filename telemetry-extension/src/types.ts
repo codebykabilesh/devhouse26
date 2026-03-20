@@ -21,6 +21,14 @@ export interface CommitFile {
     commit_id: string;
 }
 
+export interface PresenceData {
+    attendance_pct: number;
+    total_checks: number;
+    present_checks: number;
+    session_duration_seconds: number;
+    session_start: string;
+}
+
 // Supabase schema-aligned event
 export interface SupaBaseEvent {
     id?: string;
@@ -49,6 +57,16 @@ export interface SupaBaseEvent {
     pr_title: string | null;
     pr_labels: string[];
     files: CommitFile[];
+    files_changed_count?: number;
+    net_loc?: number;
+    diff_patch?: string;
+    files_json?: any;
+    modules_touched?: string[];
+    attendance_pct?: number;
+    presence_total_checks?: number;
+    presence_present_count?: number;
+    session_duration_secs?: number;
+    session_start?: string;
     // Legacy/Signal fields preserved for local logic
     active_minutes: number;
     idle_minutes: number;

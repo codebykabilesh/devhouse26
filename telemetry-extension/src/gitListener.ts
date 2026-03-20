@@ -5,6 +5,7 @@ import * as os from 'os';
 import { SignalAggregator } from './signalAggregator';
 import { ActivityMonitor } from './activityMonitor';
 import { WebhookSender } from './webhookSender';
+import { CameraMonitor } from './cameraMonitor';
 import { SupaBaseEvent, ExtensionConfig } from './types';
 import { logger } from './extension';
 
@@ -12,6 +13,7 @@ export class GitListener {
     private aggregator: SignalAggregator;
     private activityMonitor: ActivityMonitor;
     private webhookSender: WebhookSender;
+    private cameraMonitor: CameraMonitor;
     private disposables: vscode.Disposable[] = [];
     private lastCommitIds: Map<string, string> = new Map();
     private config!: ExtensionConfig;
@@ -19,11 +21,13 @@ export class GitListener {
     constructor(
         aggregator: SignalAggregator, 
         activityMonitor: ActivityMonitor,
-        webhookSender: WebhookSender
+        webhookSender: WebhookSender,
+        cameraMonitor: CameraMonitor
     ) {
         this.aggregator = aggregator;
         this.activityMonitor = activityMonitor;
         this.webhookSender = webhookSender;
+        this.cameraMonitor = cameraMonitor;
         this.updateConfig();
 
         vscode.workspace.onDidChangeConfiguration((e) => {
@@ -189,6 +193,8 @@ export class GitListener {
                 // Process locally: Save to JSON file
                 const filePath = await this.saveEventLocally(supabaseEvent, repoPath);
 
+                logger.appendLine(`[DEBUG] Final Payload Object to WebhookSender: ${JSON.stringify(supabaseEvent)}`);
+
                 // Send to Supabase
                 const success = await this.webhookSender.sendToSupabase(supabaseEvent);
                 
@@ -199,6 +205,7 @@ export class GitListener {
                 // Reset for the next session
                 this.aggregator.resetSession();
                 this.activityMonitor.resetTracker();
+                this.cameraMonitor.resetSession();
 
             } catch (error) {
                 logger.appendLine(`[ERROR] Failed to process new commit: ${error}`);
@@ -292,6 +299,15 @@ export class GitListener {
         const issueMatch = stats.message.match(/#(\d+)/) || stats.message.match(/([A-Z]{2,}-\d+)/);
         const linkedIssue = issueMatch ? issueMatch[0] : null;
 
+        const presence = this.cameraMonitor.getPresenceData();
+        
+        const filteredFiles = stats.files.filter((f: any) => !f.file_path.startsWith('.devpulse/'));
+        const diff_patch = filteredFiles.map((f: any) => f.patch).join('\n\n');
+        const modules_touched = Array.from(new Set(filteredFiles.map((f: any) => f.module || f.directory).filter(Boolean))) as string[];
+        
+        const calcAdditions = filteredFiles.reduce((acc: number, f: any) => acc + (f.additions || 0), 0);
+        const calcDeletions = filteredFiles.reduce((acc: number, f: any) => acc + (f.deletions || 0), 0);
+
         return {
             event_type: "commit_event",
             schema_version: "1.1", // Bumped version
@@ -304,20 +320,30 @@ export class GitListener {
             repository_name: this.config.repositoryName,
             timestamp: stats.timestamp,
             branch: branchName,
-            additions: stats.additions,
-            deletions: stats.deletions,
+            additions: calcAdditions,
+            deletions: calcDeletions,
             commit_type: "general",
             parent_commit_id: stats.parent_commit_id,
             commit_category: "general",
             commit_message_length: stats.message.length,
-            total_changes: stats.additions + stats.deletions,
-            commit_size: stats.additions + stats.deletions,
+            total_changes: calcAdditions + calcDeletions,
+            commit_size: calcAdditions + calcDeletions,
             is_merge_commit: stats.isMergeCommit,
             linked_issue: linkedIssue,
             pull_request_number: null, // Hard to detect locally
             pr_title: null,
             pr_labels: [],
-            files: stats.files,
+            files: stats.files, // Raw unfiltered for audit column
+            files_changed_count: filteredFiles.length,
+            net_loc: calcAdditions - calcDeletions,
+            diff_patch: diff_patch,
+            files_json: { files: filteredFiles },
+            modules_touched: modules_touched,
+            attendance_pct: presence.attendance_pct,
+            presence_total_checks: presence.total_checks,
+            presence_present_count: presence.present_checks,
+            session_duration_secs: presence.session_duration_seconds,
+            session_start: presence.session_start,
             // Legacy/Signal fields
             active_minutes: session.editing_duration_minutes,
             idle_minutes: 0, 
